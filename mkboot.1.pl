@@ -136,7 +136,7 @@ if ($action eq "unpack") {
 			die "unable to create folder \"$unpackdir/ramdisk\" for unpacking ramdisk!\n";
 		}
 		chdir("$unpackdir/ramdisk") or die "cannot switch to ramdisk dir: $!\n";
-		$status = system("lz4 -d $pwd/$unpackdir/boot-ramdisk.lz4 2>/dev/null | cpio -i -d -m  --no-absolute-filenames");
+		$status = system("bsdtar xvf $pwd/$unpackdir/boot-ramdisk.lz4 2>/dev/null");
 		if (! $status eq 0) {
 			die "ramdisk extract (lz4) failed! ($status)";
 		}
@@ -165,7 +165,7 @@ if ($action eq "unpack") {
 	my @args = ('mkbootimg');
 
 	# basic
-	my @boot_files = ('zImage', 'cmdline', 'base', 'kernel_offset', 'ramdisk_offset', 'tags_offset', 'pagesize', 'dt');
+	my @boot_files = ('zImage', 'cmdline', 'base', 'kernel_offset', 'ramdisk_offset', 'tags_offset', 'pagesize');
 	foreach my $f (@boot_files) {
 		my $fp = "$unpackdir/boot-$f";
 		if (!is_readf($fp)) {
@@ -174,7 +174,9 @@ if ($action eq "unpack") {
 	}
 
 	push @args, ('--kernel', "$unpackdir/boot-zImage");
-	push @args, ('--dt', "$unpackdir/boot-dt");
+	if (is_readf("$unpackdir/boot-dt")) {
+		push @args, ('--dt', "$unpackdir/boot-dt");
+	}
 
 	# deal with ramdisk
 	my $ramdisk = "none";
@@ -187,7 +189,7 @@ if ($action eq "unpack") {
 	} elsif (is_readf("$unpackdir/boot-ramdisk.lz4")) {
 		$ramdisk = "$unpackdir/boot-ramdisk.lz4";
 		$ramdisk_new = "$unpackdir/boot-ramdisk.new.lz4";
-		$zc_args = "lz4 -f -9";
+		$zc_args = "lzma";
 	} else {
 		die "ramdisk missing/unknown!\n";
 	}
